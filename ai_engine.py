@@ -3,6 +3,8 @@ from deepface import DeepFace
 import pandas as pd
 from datetime import datetime
 import os
+from PIL import Image, ImageDraw, ImageFont
+import numpy as np
 
 students_df = pd.read_csv("students.csv", encoding="utf-8-sig")
 students_df.columns = students_df.columns.str.strip()
@@ -18,6 +20,8 @@ CSV_FILE = os.path.join(BASE_DIR, "emotion_log.csv")
 DB_PATH = os.path.join(BASE_DIR, "students")
 CAMERA_SOURCE = os.getenv("CAMERA_SOURCE", "0")
 LECTURE_ID = "L1"
+
+FONT_PATH = "arial.ttf"   # لو مش موجود عندك قولى
 
 if not os.path.exists(CSV_FILE):
     pd.DataFrame(
@@ -86,9 +90,11 @@ while True:
                 )
 
                 if len(identities) > 0 and not identities[0].empty:
-                    best_match = identities[0].iloc[0]
+                    best_match = identities[0].sort_values("distance").iloc[0]
 
-                    if best_match["distance"] > 0.6:
+                    print("Distance:", best_match["distance"])
+
+                    if best_match["distance"] > 0.4:
                         name = "Not Registered"
                     else:
                         matched_path = best_match["identity"]
@@ -130,15 +136,20 @@ while True:
 
             cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
 
-            cv2.putText(
-                frame,
-                f"{name} ({emotion} {confidence})",
-                (x, y - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                color,
-                2
-            )
+            # 🔥 تحويل الصورة لـ PIL
+            img_pil = Image.fromarray(frame)
+            draw = ImageDraw.Draw(img_pil)
+
+            try:
+                font = ImageFont.truetype(FONT_PATH, 20)
+            except:
+                font = ImageFont.load_default()
+
+            text = f"{name} ({emotion} {confidence})"
+
+            draw.text((x, y - 25), text, font=font, fill=(0, 255, 0))
+
+            frame = np.array(img_pil)
 
     except Exception as e:
         print("Analyze Error:", e)
